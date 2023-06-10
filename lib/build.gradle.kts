@@ -1,6 +1,7 @@
 plugins {
-    id("org.jetbrains.kotlin.jvm") version "1.6.21"
-    `java-library`
+    java
+    kotlin("jvm") version "1.6.0"
+    `maven-publish`
 }
 
 repositories {
@@ -8,7 +9,24 @@ repositories {
 }
 
 dependencies {
-    implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    implementation(kotlin("stdlib-jdk8"))
     implementation(kotlin("reflect"))
+}
+
+tasks {
+    compileKotlin {
+        kotlinOptions.jvmTarget = "1.8"
+    }
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            groupId = "ru.meldren"
+            artifactId = "ABC"
+            version = "1.0"
+
+            from(components["java"])
+        }
+    }
 }

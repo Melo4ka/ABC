@@ -12,7 +12,7 @@ import ru.meldren.abc.service.*
 import kotlin.reflect.*
 
 @Suppress("NOTHING_TO_INLINE")
-class CommandManager<S : Any>(val commandPrefix: String = "/") {
+open class CommandManager<S : Any>(val commandPrefix: String = "/") {
 
     private val _registeredCommands = mutableSetOf<CommandData>()
     private val _defaultParsers = mutableMapOf<KClass<*>, ArgumentParser<*>>()

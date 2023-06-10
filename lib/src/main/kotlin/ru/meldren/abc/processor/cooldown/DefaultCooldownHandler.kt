@@ -2,15 +2,14 @@ package ru.meldren.abc.processor.cooldown
 
 import ru.meldren.abc.annotation.Cooldown
 import ru.meldren.abc.common.CommandData
-import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import kotlin.math.max
 import kotlin.reflect.KClass
 
-class DefaultCooldownHandler<S : Any>(private val uuidResolver: (S) -> UUID) : CooldownHandler<S> {
+class DefaultCooldownHandler<S : Any, K : Any>(private val uuidResolver: (S) -> K) : CooldownHandler<S> {
 
-    private val cooldowns = ConcurrentHashMap<UUID, ConcurrentHashMap<KClass<out Any>, Long>>()
+    private val cooldowns = ConcurrentHashMap<K, ConcurrentHashMap<KClass<out Any>, Long>>()
     private val cooldownPool = Executors.newSingleThreadScheduledExecutor()
 
     override fun test(sender: S, commandData: CommandData, annotation: Cooldown): Long {

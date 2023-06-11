@@ -45,6 +45,10 @@ open class CommandManager<S : Any>(val commandPrefix: String = "/") {
         get() = _handlers.toMap()
     val suggestions
         get() = _suggestions.toMap()
+    val permissionHandler
+        get() = processorRegistry.permissionHandler
+    val cooldownHandler
+        get() = processorRegistry.cooldownHandler
 
     /* Permission handler */
 

@@ -6,6 +6,7 @@ data class CommandData internal constructor(
     val aliases: List<String>,
     val description: String?,
     val permission: String?,
+    val cooldownInSeconds: Long,
     val instance: Any,
     val defaultSubcommands: List<SubcommandData>,
     val subcommands: Map<List<String>, List<SubcommandData>>,

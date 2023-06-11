@@ -35,6 +35,9 @@ internal class CommandRegistry(private val registeredCommands: MutableSet<Comman
         val aliases = getAliases(commandClass)
         val description = getDescription(commandClass)
         val permission = getPermission(commandClass)
+        val cooldown = commandClass.findAnnotation<Cooldown>()?.let {
+            it.unit.toSeconds(it.value.toLong())
+        } ?: 0
         val defaultSubcommands = getDefaultSubcommands(commandClass)
         val subcommands = getSubcommands(commandClass)
         checkOrThrow(subcommands.isNotEmpty() || defaultSubcommands.isNotEmpty()) {
@@ -43,7 +46,7 @@ internal class CommandRegistry(private val registeredCommands: MutableSet<Comman
         val children = getChildren(command)
         val beforeCommands = getBeforeCommands(commandClass)
         return CommandData(
-            aliases, description, permission,
+            aliases, description, permission, cooldown,
             command, defaultSubcommands, subcommands,
             children, beforeCommands
         )
@@ -172,11 +175,6 @@ internal class CommandRegistry(private val registeredCommands: MutableSet<Comman
         }
 
         return functions
-    }
-
-    private fun hasOneSenderParam(function: KFunction<*>): Boolean {
-        return function.valueParameters.isEmpty() ||
-                function.valueParameters.size == 1 && function.valueParameters[0].hasAnnotation<Sender>()
     }
 
     private fun getDescription(element: KAnnotatedElement) = element.findAnnotation<Description>()?.description

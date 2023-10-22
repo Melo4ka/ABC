@@ -1,8 +1,8 @@
 package ru.meldren.abc.processor.validator
 
 import ru.meldren.abc.annotation.Range
-import ru.meldren.abc.annotation.Sender
-import ru.meldren.abc.exception.processing.ArgumentValidationException
+import ru.meldren.abc.exception.invocation.ArgumentValidationException
+import ru.meldren.abc.processor.ArgumentValidator
 import ru.meldren.abc.util.checkOrThrow
 import java.util.function.Function
 

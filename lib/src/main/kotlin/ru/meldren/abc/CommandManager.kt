@@ -6,8 +6,8 @@ import ru.meldren.abc.processor.ArgumentParser
 import ru.meldren.abc.processor.ExceptionHandler
 import ru.meldren.abc.processor.PermissionHandler
 import ru.meldren.abc.processor.SuggestionProvider
-import ru.meldren.abc.processor.cooldown.CooldownHandler
-import ru.meldren.abc.processor.validator.ArgumentValidator
+import ru.meldren.abc.processor.CooldownHandler
+import ru.meldren.abc.processor.ArgumentValidator
 import ru.meldren.abc.service.*
 import kotlin.reflect.*
 

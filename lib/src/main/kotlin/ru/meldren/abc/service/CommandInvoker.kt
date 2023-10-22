@@ -8,11 +8,11 @@ import ru.meldren.abc.common.CommandData
 import ru.meldren.abc.common.SubcommandData
 import ru.meldren.abc.exception.*
 import ru.meldren.abc.exception.invocation.*
-import ru.meldren.abc.exception.processing.ArgumentParseException
+import ru.meldren.abc.exception.invocation.ArgumentParseException
 import ru.meldren.abc.processor.ArgumentParser
 import ru.meldren.abc.processor.ExceptionHandler
 import ru.meldren.abc.processor.SuggestionProvider
-import ru.meldren.abc.processor.validator.ArgumentValidator
+import ru.meldren.abc.processor.ArgumentValidator
 import ru.meldren.abc.util.arrayType
 import ru.meldren.abc.util.checkOrThrow
 import ru.meldren.abc.util.toInt
@@ -55,8 +55,12 @@ internal class CommandInvoker<S : Any, C : Any>(
             }
 
             callSubcommand(commandData, subcommandData, params) as T?
-        } catch (ex: CommandInvocationException) {
-            (handlers[ex::class] as? ExceptionHandler<CommandInvocationException, S>)?.handle(ex, sender)
+        } catch (ex: Exception) {
+            val cause = (ex.cause as? CommandInvocationException) ?: ex
+            if (cause !is CommandInvocationException) {
+                throw ex
+            }
+            (handlers[cause::class] as? ExceptionHandler<CommandInvocationException, S>)?.handle(cause, sender)
             null
         }
     }

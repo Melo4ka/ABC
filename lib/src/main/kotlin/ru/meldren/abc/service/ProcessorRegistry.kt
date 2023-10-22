@@ -6,13 +6,14 @@ import ru.meldren.abc.processor.ArgumentParser
 import ru.meldren.abc.processor.ExceptionHandler
 import ru.meldren.abc.processor.PermissionHandler
 import ru.meldren.abc.processor.SuggestionProvider
-import ru.meldren.abc.processor.cooldown.CooldownHandler
-import ru.meldren.abc.processor.validator.ArgumentValidator
+import ru.meldren.abc.processor.CooldownHandler
+import ru.meldren.abc.processor.ArgumentValidator
 import ru.meldren.abc.util.checkNotNullOrThrow
 import ru.meldren.abc.util.checkNullOrThrow
 import ru.meldren.abc.util.checkOrThrow
 import ru.meldren.abc.util.supertypeTypeParameters
 import kotlin.reflect.KClass
+import kotlin.reflect.full.isSubclassOf
 
 @PublishedApi
 internal class ProcessorRegistry<S : Any, C : Any>(
@@ -124,6 +125,7 @@ internal class ProcessorRegistry<S : Any, C : Any>(
         validators.remove(annotationClass)
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun <T : CommandInvocationException, I : Any> registerExceptionHandler(
         handler: ExceptionHandler<T, I>,
         type: KClass<*> = handler::class.supertypeTypeParameters<ExceptionHandler<*, *>>()[0]
@@ -132,8 +134,15 @@ internal class ProcessorRegistry<S : Any, C : Any>(
             CommandRegistrationException("Exception handler for ${type.simpleName} is already registered.")
         }
 
-        @Suppress("UNCHECKED_CAST")
-        handlers[type as KClass<out CommandInvocationException>] = handler
+        val subclasses = mutableListOf(type)
+        while (subclasses.isNotEmpty()) {
+            val subclass = subclasses.removeLast()
+            subclasses += subclass.sealedSubclasses
+            if (subclass in handlers) {
+                continue
+            }
+            handlers[subclass as KClass<out CommandInvocationException>] = handler
+        }
     }
 
     fun unregisterExceptionHandler(type: KClass<out CommandException>) {
@@ -141,7 +150,8 @@ internal class ProcessorRegistry<S : Any, C : Any>(
             CommandRegistrationException("Exception handler for ${type.simpleName} is not registered.")
         }
 
-        handlers.remove(type)
+        val handler = handlers[type]
+        handlers.entries.removeIf { (key, value) -> key.isSubclassOf(type) && handler == value }
     }
 
     fun registerSuggestionProvider(provider: SuggestionProvider<S>) {

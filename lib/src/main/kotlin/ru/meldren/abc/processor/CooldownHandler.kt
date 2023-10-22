@@ -1,4 +1,4 @@
-package ru.meldren.abc.processor.cooldown
+package ru.meldren.abc.processor
 
 import ru.meldren.abc.annotation.Cooldown
 import ru.meldren.abc.common.CommandData

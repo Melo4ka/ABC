@@ -2,6 +2,7 @@ package ru.meldren.abc.processor.cooldown
 
 import ru.meldren.abc.annotation.Cooldown
 import ru.meldren.abc.common.CommandData
+import ru.meldren.abc.processor.CooldownHandler
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import kotlin.math.max

@@ -8,11 +8,10 @@ import ru.meldren.abc.common.CommandData
 import ru.meldren.abc.common.SubcommandData
 import ru.meldren.abc.exception.*
 import ru.meldren.abc.exception.invocation.*
-import ru.meldren.abc.exception.invocation.ArgumentParseException
 import ru.meldren.abc.processor.ArgumentParser
+import ru.meldren.abc.processor.ArgumentValidator
 import ru.meldren.abc.processor.ExceptionHandler
 import ru.meldren.abc.processor.SuggestionProvider
-import ru.meldren.abc.processor.ArgumentValidator
 import ru.meldren.abc.util.arrayType
 import ru.meldren.abc.util.checkOrThrow
 import ru.meldren.abc.util.toInt
@@ -28,7 +27,7 @@ internal class CommandInvoker<S : Any, C : Any>(
     private val registeredCommands: MutableSet<CommandData<C>>,
     private val defaultParsers: MutableMap<KClass<*>, ArgumentParser<*>>,
     private val parsers: MutableMap<KClass<out ArgumentParser<*>>, ArgumentParser<*>>,
-    private val validators: MutableMap<KClass<out Annotation>, ArgumentValidator<S, *, *>>,
+    private val validators: MutableMap<KClass<out Annotation>, ArgumentValidator<*, *, S>>,
     private val handlers: MutableMap<KClass<out CommandInvocationException>, ExceptionHandler<*, *>>,
     private val suggestions: MutableMap<KClass<out SuggestionProvider<S>>, SuggestionProvider<S>>,
     private val commandsByAliases: MutableMap<String, CommandData<C>>
@@ -227,7 +226,7 @@ internal class CommandInvoker<S : Any, C : Any>(
                 val validator = validators[annotation.annotationClass] ?: return@annotation
                 try {
                     @Suppress("UNCHECKED_CAST")
-                    (validator as ArgumentValidator<S, Any, Annotation>).validate(sender, param, annotation)
+                    (validator as ArgumentValidator<Any, Annotation, S>).validate(sender, param, annotation)
                 } catch (_: ClassCastException) {
                     throw CommandException("@${annotation.annotationClass.simpleName} validator is not compatible with ${param::class.simpleName}.")
                 }

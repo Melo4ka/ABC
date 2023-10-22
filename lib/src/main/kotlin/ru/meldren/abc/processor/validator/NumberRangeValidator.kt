@@ -8,7 +8,7 @@ import java.util.function.Function
 
 class NumberRangeValidator<S : Any>(
     private val failMessage: Function<Range, String>
-) : ArgumentValidator<S, Number, Range> {
+) : ArgumentValidator<Number, Range, S> {
 
     override fun validate(sender: S, arg: Number, annotation: Range) {
         val doubleValue = arg.toDouble()

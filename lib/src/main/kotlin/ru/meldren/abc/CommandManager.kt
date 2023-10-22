@@ -2,12 +2,7 @@ package ru.meldren.abc
 
 import ru.meldren.abc.common.CommandData
 import ru.meldren.abc.exception.invocation.CommandInvocationException
-import ru.meldren.abc.processor.ArgumentParser
-import ru.meldren.abc.processor.ExceptionHandler
-import ru.meldren.abc.processor.PermissionHandler
-import ru.meldren.abc.processor.SuggestionProvider
-import ru.meldren.abc.processor.CooldownHandler
-import ru.meldren.abc.processor.ArgumentValidator
+import ru.meldren.abc.processor.*
 import ru.meldren.abc.service.*
 import kotlin.reflect.*
 
@@ -17,7 +12,7 @@ open class CommandManager<S : Any, C : Any>(val commandPrefix: String = "/") {
     private val _registeredCommands = mutableSetOf<CommandData<C>>()
     private val _defaultParsers = mutableMapOf<KClass<*>, ArgumentParser<*>>()
     private val _parsers = mutableMapOf<KClass<out ArgumentParser<*>>, ArgumentParser<*>>()
-    private val _validators = mutableMapOf<KClass<out Annotation>, ArgumentValidator<S, *, *>>()
+    private val _validators = mutableMapOf<KClass<out Annotation>, ArgumentValidator<*, *, S>>()
     private val _handlers = mutableMapOf<KClass<out CommandInvocationException>, ExceptionHandler<*, *>>()
     private val _suggestions = mutableMapOf<KClass<out SuggestionProvider<S>>, SuggestionProvider<S>>()
     private val commandsByAliases = mutableMapOf<String, CommandData<C>>()
@@ -94,11 +89,11 @@ open class CommandManager<S : Any, C : Any>(val commandPrefix: String = "/") {
 
     /* Validators registry */
 
-    inline fun registerValidator(validator: ArgumentValidator<S, *, *>) = processorRegistry.registerValidator(validator)
+    inline fun registerValidator(validator: ArgumentValidator<*, *, S>) = processorRegistry.registerValidator(validator)
 
-    inline fun <T : Any, reified A : Annotation> registerValidator(crossinline validator: (T, A) -> Unit) {
-        processorRegistry.registerValidator(object : ArgumentValidator<S, T, A> {
-            override fun validate(sender: S, arg: T, annotation: A) = validator(arg, annotation)
+    inline fun <T : Any, reified A : Annotation> registerValidator(crossinline validator: (T, A, S) -> Unit) {
+        processorRegistry.registerValidator(object : ArgumentValidator<T, A, S> {
+            override fun validate(sender: S, arg: T, annotation: A) = validator(arg, annotation, sender)
         }, A::class)
     }
 

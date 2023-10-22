@@ -28,7 +28,7 @@ internal class CommandInvoker<S : Any, C : Any>(
     private val registeredCommands: MutableSet<CommandData<C>>,
     private val defaultParsers: MutableMap<KClass<*>, ArgumentParser<*>>,
     private val parsers: MutableMap<KClass<out ArgumentParser<*>>, ArgumentParser<*>>,
-    private val validators: MutableMap<KClass<out Annotation>, ArgumentValidator<*, *>>,
+    private val validators: MutableMap<KClass<out Annotation>, ArgumentValidator<S, *, *>>,
     private val handlers: MutableMap<KClass<out CommandInvocationException>, ExceptionHandler<*, *>>,
     private val suggestions: MutableMap<KClass<out SuggestionProvider<S>>, SuggestionProvider<S>>,
     private val commandsByAliases: MutableMap<String, CommandData<C>>
@@ -208,22 +208,22 @@ internal class CommandInvoker<S : Any, C : Any>(
         val commonArgsNumber = functionParams.size - hasVararg.toInt()
         addCommonArgsToParams(params, functionParams, commonArgsNumber)
 
-        validateParams(params)
+        validateParams(sender, params)
 
         if (hasVararg) {
-            addVarargToParams(params, functionParams)
+            addVarargToParams(sender, params, functionParams)
         }
 
         return params
     }
 
-    private fun validateParams(params: List<Pair<Any, List<Annotation>>>) {
+    private fun validateParams(sender: S, params: List<Pair<Any, List<Annotation>>>) {
         params.forEach { (param, annotations) ->
             annotations.forEach annotation@{ annotation ->
                 val validator = validators[annotation.annotationClass] ?: return@annotation
                 try {
                     @Suppress("UNCHECKED_CAST")
-                    (validator as ArgumentValidator<Any, Annotation>).validate(param, annotation)
+                    (validator as ArgumentValidator<S, Any, Annotation>).validate(sender, param, annotation)
                 } catch (_: ClassCastException) {
                     throw CommandException("@${annotation.annotationClass.simpleName} validator is not compatible with ${param::class.simpleName}.")
                 }
@@ -265,7 +265,11 @@ internal class CommandInvoker<S : Any, C : Any>(
         }
     }
 
-    private fun addVarargToParams(params: MutableList<Pair<Any, List<Annotation>>>, functionParams: List<KParameter>) {
+    private fun addVarargToParams(
+        sender: S,
+        params: MutableList<Pair<Any, List<Annotation>>>,
+        functionParams: List<KParameter>
+    ) {
         val varargParam = functionParams.last()
         val arrayType = varargParam.arrayType()!!
         val parser = getParser(varargParam, arrayType)
@@ -277,7 +281,7 @@ internal class CommandInvoker<S : Any, C : Any>(
             array.add(parsedParam)
         }
 
-        validateParams(array.map { it to varargParam.annotations })
+        validateParams(sender, array.map { it to varargParam.annotations })
 
         val sizeOfVarargs = params.size - functionParams.size + 1
         repeat(sizeOfVarargs) { params.removeLast() }

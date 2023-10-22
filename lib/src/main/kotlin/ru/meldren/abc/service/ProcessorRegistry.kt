@@ -18,7 +18,7 @@ import kotlin.reflect.KClass
 internal class ProcessorRegistry<S : Any, C : Any>(
     private val defaultParsers: MutableMap<KClass<*>, ArgumentParser<*>>,
     private val parsers: MutableMap<KClass<out ArgumentParser<*>>, ArgumentParser<*>>,
-    private val validators: MutableMap<KClass<out Annotation>, ArgumentValidator<*, *>>,
+    private val validators: MutableMap<KClass<out Annotation>, ArgumentValidator<S, *, *>>,
     private val handlers: MutableMap<KClass<out CommandInvocationException>, ExceptionHandler<*, *>>,
     private val suggestions: MutableMap<KClass<out SuggestionProvider<S>>, SuggestionProvider<S>>
 ) {
@@ -105,8 +105,8 @@ internal class ProcessorRegistry<S : Any, C : Any>(
     }
 
     fun registerValidator(
-        validator: ArgumentValidator<*, *>,
-        annotationClass: KClass<*> = validator::class.supertypeTypeParameters<ArgumentValidator<*, *>>()[1]
+        validator: ArgumentValidator<S, *, *>,
+        annotationClass: KClass<*> = validator::class.supertypeTypeParameters<ArgumentValidator<S, *, *>>()[1]
     ) {
         checkOrThrow(annotationClass !in validators) {
             CommandRegistrationException("${annotationClass.simpleName} validator is already registered.")

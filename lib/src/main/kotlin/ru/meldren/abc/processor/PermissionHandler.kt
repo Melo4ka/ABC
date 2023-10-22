@@ -1,6 +1,6 @@
 package ru.meldren.abc.processor
 
-fun interface PermissionHandler<S : Any> {
+fun interface PermissionHandler<S : Any, C : Any> {
 
-    fun hasPermission(sender: S, permission: String): Boolean
+    fun checkPermission(command: C, sender: S)
 }

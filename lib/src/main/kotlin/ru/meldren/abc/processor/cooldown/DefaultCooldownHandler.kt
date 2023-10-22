@@ -7,12 +7,12 @@ import java.util.concurrent.Executors
 import kotlin.math.max
 import kotlin.reflect.KClass
 
-class DefaultCooldownHandler<S : Any, K : Any>(private val uuidResolver: (S) -> K) : CooldownHandler<S> {
+class DefaultCooldownHandler<S : Any, C : Any, K : Any>(private val uuidResolver: (S) -> K) : CooldownHandler<S, C> {
 
     private val cooldowns = ConcurrentHashMap<K, ConcurrentHashMap<KClass<out Any>, Long>>()
     private val cooldownPool = Executors.newSingleThreadScheduledExecutor()
 
-    override fun test(sender: S, commandData: CommandData, annotation: Cooldown): Long {
+    override fun test(sender: S, commandData: CommandData<C>, annotation: Cooldown): Long {
         if (annotation.value == 0UL) {
             return 0
         }

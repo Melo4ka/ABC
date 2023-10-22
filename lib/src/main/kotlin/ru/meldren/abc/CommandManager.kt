@@ -1,7 +1,7 @@
 package ru.meldren.abc
 
 import ru.meldren.abc.common.CommandData
-import ru.meldren.abc.exception.CommandInvocationException
+import ru.meldren.abc.exception.invocation.CommandInvocationException
 import ru.meldren.abc.processor.ArgumentParser
 import ru.meldren.abc.processor.ExceptionHandler
 import ru.meldren.abc.processor.PermissionHandler
@@ -12,25 +12,26 @@ import ru.meldren.abc.service.*
 import kotlin.reflect.*
 
 @Suppress("NOTHING_TO_INLINE")
-open class CommandManager<S : Any>(val commandPrefix: String = "/") {
+open class CommandManager<S : Any, C : Any>(val commandPrefix: String = "/") {
 
-    private val _registeredCommands = mutableSetOf<CommandData>()
+    private val _registeredCommands = mutableSetOf<CommandData<C>>()
     private val _defaultParsers = mutableMapOf<KClass<*>, ArgumentParser<*>>()
     private val _parsers = mutableMapOf<KClass<out ArgumentParser<*>>, ArgumentParser<*>>()
     private val _validators = mutableMapOf<KClass<out Annotation>, ArgumentValidator<*, *>>()
     private val _handlers = mutableMapOf<KClass<out CommandInvocationException>, ExceptionHandler<*, *>>()
     private val _suggestions = mutableMapOf<KClass<out SuggestionProvider<S>>, SuggestionProvider<S>>()
+    private val commandsByAliases = mutableMapOf<String, CommandData<C>>()
 
     @PublishedApi
-    internal val commandRegistry = CommandRegistry(_registeredCommands)
+    internal val commandRegistry = CommandRegistry(_registeredCommands, commandsByAliases)
 
     @PublishedApi
-    internal val processorRegistry = ProcessorRegistry(_defaultParsers, _parsers, _validators, _handlers, _suggestions)
+    internal val processorRegistry = ProcessorRegistry<S, C>(_defaultParsers, _parsers, _validators, _handlers, _suggestions)
 
     @PublishedApi
     internal val commandInvoker = CommandInvoker(
-        commandPrefix, processorRegistry, _registeredCommands,
-        _defaultParsers, _parsers, _validators, _handlers, _suggestions
+        commandPrefix, processorRegistry, _registeredCommands, _defaultParsers,
+        _parsers, _validators, _handlers, _suggestions, commandsByAliases
     )
 
     val registeredCommands
@@ -52,22 +53,22 @@ open class CommandManager<S : Any>(val commandPrefix: String = "/") {
 
     /* Permission handler */
 
-    inline fun registerPermissionHandler(handler: PermissionHandler<S>) =
+    inline fun registerPermissionHandler(handler: PermissionHandler<S, C>) =
         processorRegistry.registerPermissionHandler(handler)
 
     inline fun unregisterPermissionHandler() = processorRegistry.unregisterPermissionHandler()
 
     /* Cooldown handler */
 
-    inline fun registerCooldownHandler(handler: CooldownHandler<S>) = processorRegistry.registerCooldownHandler(handler)
+    inline fun registerCooldownHandler(handler: CooldownHandler<S, C>) = processorRegistry.registerCooldownHandler(handler)
 
     inline fun unregisterCooldownHandler() = processorRegistry.unregisterCooldownHandler()
 
     /* Commands registry */
 
-    inline fun registerCommand(command: Any) = commandRegistry.registerCommand(command)
+    inline fun registerCommand(command: C) = commandRegistry.registerCommand(command)
 
-    inline fun <reified T> unregisterCommand() = commandRegistry.unregisterCommand(T::class)
+    inline fun <reified T : C> unregisterCommand() = commandRegistry.unregisterCommand(T::class)
 
     inline fun <T> invokeCommand(sender: S, input: String) = commandInvoker.invokeCommand<T>(sender, input)
 

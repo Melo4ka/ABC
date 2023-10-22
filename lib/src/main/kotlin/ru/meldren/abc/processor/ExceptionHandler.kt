@@ -1,6 +1,6 @@
 package ru.meldren.abc.processor
 
-import ru.meldren.abc.exception.CommandInvocationException
+import ru.meldren.abc.exception.invocation.CommandInvocationException
 
 interface ExceptionHandler<in T : CommandInvocationException, in S : Any> {
 

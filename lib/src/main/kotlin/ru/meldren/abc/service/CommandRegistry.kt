@@ -13,13 +13,21 @@ import kotlin.reflect.KFunction
 import kotlin.reflect.full.*
 
 @PublishedApi
-internal class CommandRegistry(private val registeredCommands: MutableSet<CommandData>) {
+internal class CommandRegistry<C : Any>(
+    private val registeredCommands: MutableSet<CommandData<C>>,
+    private val commandsByAliases: MutableMap<String, CommandData<C>>
+) {
 
-    fun registerCommand(command: Any): CommandData {
-        return constructCommand(command).also { registeredCommands.add(it) }
+    fun registerCommand(command: C): CommandData<C> {
+        return constructCommand(command).also {
+            registeredCommands.add(it)
+            it.aliases.forEach { alias ->
+                commandsByAliases[alias.lowercase()] = it
+            }
+        }
     }
 
-    fun unregisterCommand(commandClass: KClass<*>) {
+    fun <T : C> unregisterCommand(commandClass: KClass<T>) {
         val command = registeredCommands.find { commandClass == it.instance::class }
 
         checkNotNullOrThrow(command) {
@@ -27,14 +35,16 @@ internal class CommandRegistry(private val registeredCommands: MutableSet<Comman
         }
 
         registeredCommands.remove(command)
+        command.aliases.forEach { alias ->
+            commandsByAliases.remove(alias.lowercase())
+        }
     }
 
-    private fun constructCommand(command: Any): CommandData {
+    private fun constructCommand(command: C): CommandData<C> {
         val commandClass = command::class
         checkClassFitsRequirements(commandClass)
         val aliases = getAliases(commandClass)
         val description = getDescription(commandClass)
-        val permission = getPermission(commandClass)
         val cooldown = commandClass.findAnnotation<Cooldown>()?.let {
             it.unit.toSeconds(it.value.toLong())
         } ?: 0
@@ -46,7 +56,7 @@ internal class CommandRegistry(private val registeredCommands: MutableSet<Comman
         val children = getChildren(command)
         val beforeCommands = getBeforeCommands(commandClass)
         return CommandData(
-            aliases, description, permission, cooldown,
+            aliases, description, cooldown,
             command, defaultSubcommands, subcommands,
             children, beforeCommands
         )
@@ -123,20 +133,23 @@ internal class CommandRegistry(private val registeredCommands: MutableSet<Comman
         return SubcommandData(
             getDescription(function),
             getSyntax(function),
-            getPermission(function),
             params, function
         )
     }
 
-    private fun getChildren(command: Any): List<CommandData> {
+    private fun getChildren(command: C): List<CommandData<C>> {
         return command::class.nestedClasses.map {
             val constructor = it.constructors.firstOrNull()
             checkOrThrow(constructor != null && constructor.valueParameters.isEmpty()) {
-                CommandRegistrationException("${command::class.simpleName} must have a single no-arg constructor.")
+                CommandRegistrationException("${it::class.simpleName} must have a single no-arg constructor.")
             }
 
-            val args = if (it.isInner) arrayOf(command) else emptyArray()
-            val child = constructor.call(*args)
+            @Suppress("Unchecked_cast")
+            val child = try {
+                (if (it.isInner) constructor.call(command) else constructor.call()) as C
+            } catch (ex: ClassCastException) {
+                throw CommandRegistrationException("${it::class.simpleName} must implement global command interface: ${ex.message}")
+            }
             constructCommand(child)
         }
     }
@@ -180,6 +193,4 @@ internal class CommandRegistry(private val registeredCommands: MutableSet<Comman
     private fun getDescription(element: KAnnotatedElement) = element.findAnnotation<Description>()?.description
 
     private fun getSyntax(element: KAnnotatedElement) = element.findAnnotation<Syntax>()?.syntax
-
-    private fun getPermission(element: KAnnotatedElement) = element.findAnnotation<Permission>()?.permission
 }

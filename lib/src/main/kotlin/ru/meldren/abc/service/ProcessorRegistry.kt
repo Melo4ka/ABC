@@ -1,6 +1,7 @@
 package ru.meldren.abc.service
 
 import ru.meldren.abc.exception.*
+import ru.meldren.abc.exception.invocation.CommandInvocationException
 import ru.meldren.abc.processor.ArgumentParser
 import ru.meldren.abc.processor.ExceptionHandler
 import ru.meldren.abc.processor.PermissionHandler
@@ -14,7 +15,7 @@ import ru.meldren.abc.util.supertypeTypeParameters
 import kotlin.reflect.KClass
 
 @PublishedApi
-internal class ProcessorRegistry<S : Any>(
+internal class ProcessorRegistry<S : Any, C : Any>(
     private val defaultParsers: MutableMap<KClass<*>, ArgumentParser<*>>,
     private val parsers: MutableMap<KClass<out ArgumentParser<*>>, ArgumentParser<*>>,
     private val validators: MutableMap<KClass<out Annotation>, ArgumentValidator<*, *>>,
@@ -22,12 +23,12 @@ internal class ProcessorRegistry<S : Any>(
     private val suggestions: MutableMap<KClass<out SuggestionProvider<S>>, SuggestionProvider<S>>
 ) {
 
-    var permissionHandler: PermissionHandler<S>? = null
+    var permissionHandler: PermissionHandler<S, C>? = null
         private set
-    var cooldownHandler: CooldownHandler<S>? = null
+    var cooldownHandler: CooldownHandler<S, C>? = null
         private set
 
-    fun registerPermissionHandler(handler: PermissionHandler<S>) {
+    fun registerPermissionHandler(handler: PermissionHandler<S, C>) {
         checkNullOrThrow(permissionHandler) {
             CommandRegistrationException("Permission handler is already registered.")
         }
@@ -43,7 +44,7 @@ internal class ProcessorRegistry<S : Any>(
         permissionHandler = null
     }
 
-    fun registerCooldownHandler(handler: CooldownHandler<S>) {
+    fun registerCooldownHandler(handler: CooldownHandler<S, C>) {
         checkNullOrThrow(cooldownHandler) {
             CommandRegistrationException("Cooldown handler is already registered.")
         }

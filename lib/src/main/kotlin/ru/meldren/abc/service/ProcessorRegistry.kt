@@ -125,10 +125,6 @@ internal class ProcessorRegistry<S : Any, C : Any>(
         handler: ExceptionHandler<T, I>,
         type: KClass<*> = handler::class.supertypeTypeParameters<ExceptionHandler<*, *>>()[0]
     ) {
-        checkOrThrow(type !in handlers) {
-            CommandRegistrationException("Exception handler for ${type.simpleName} is already registered.")
-        }
-
         val subclasses = mutableListOf(type)
         while (subclasses.isNotEmpty()) {
             val subclass = subclasses.removeLast()
@@ -141,10 +137,6 @@ internal class ProcessorRegistry<S : Any, C : Any>(
     }
 
     fun unregisterExceptionHandler(type: KClass<out CommandException>) {
-        checkOrThrow(type in handlers) {
-            CommandRegistrationException("Exception handler for ${type.simpleName} is not registered.")
-        }
-
         val handler = handlers[type]
         handlers.entries.removeIf { (key, value) -> key.isSubclassOf(type) && handler == value }
     }

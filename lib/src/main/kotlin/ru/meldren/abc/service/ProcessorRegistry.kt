@@ -137,6 +137,10 @@ internal class ProcessorRegistry<S : Any, C : Any>(
     }
 
     fun unregisterExceptionHandler(type: KClass<out CommandException>) {
+        checkOrThrow(type in handlers) {
+            CommandRegistrationException("Exception handler for ${type.simpleName} is not registered.")
+        }
+
         val handler = handlers[type]
         handlers.entries.removeIf { (key, value) -> key.isSubclassOf(type) && handler == value }
     }

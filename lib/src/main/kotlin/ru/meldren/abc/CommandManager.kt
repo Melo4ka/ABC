@@ -66,10 +66,9 @@ open class CommandManager<S : Any, C : Any>(val commandPrefix: String = "/") {
 
     inline fun registerCommand(command: C) = commandRegistry.registerCommand(command)
 
-    inline fun <reified T : C> unregisterCommand() = commandRegistry.unregisterCommand(T::class)
-
     inline fun <T> invokeCommand(sender: S, input: String) = commandInvoker.invokeCommand<T>(sender, input)
 
+    @JvmName("_")
     inline fun invokeCommand(sender: S, input: String) = commandInvoker.invokeCommand<Unit>(sender, input)
 
     inline fun generateSuggestions(sender: S, input: String): List<String> =

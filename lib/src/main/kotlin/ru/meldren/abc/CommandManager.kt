@@ -68,7 +68,7 @@ open class CommandManager<S : Any, C : Any>(val commandPrefix: String = "/") {
 
     inline fun <T> invokeCommand(sender: S, input: String) = commandInvoker.invokeCommand<T>(sender, input)
 
-    @JvmName("_")
+    @JvmName(" ")
     inline fun invokeCommand(sender: S, input: String) = commandInvoker.invokeCommand<Unit>(sender, input)
 
     inline fun generateSuggestions(sender: S, input: String): List<String> =

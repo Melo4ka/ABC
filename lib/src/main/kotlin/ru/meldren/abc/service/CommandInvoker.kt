@@ -4,8 +4,10 @@ import ru.meldren.abc.annotation.Cooldown
 import ru.meldren.abc.annotation.Parser
 import ru.meldren.abc.annotation.Sender
 import ru.meldren.abc.annotation.Suggest
+import ru.meldren.abc.common.AbstractCommandData
 import ru.meldren.abc.common.CommandData
 import ru.meldren.abc.common.SubcommandData
+import ru.meldren.abc.common.findAnnotation
 import ru.meldren.abc.exception.*
 import ru.meldren.abc.exception.invocation.*
 import ru.meldren.abc.processor.ArgumentParser
@@ -29,6 +31,7 @@ internal class CommandInvoker<S : Any, C : Any>(
     private val parsers: MutableMap<KClass<out ArgumentParser<*>>, ArgumentParser<*>>,
     private val validators: MutableMap<KClass<out Annotation>, ArgumentValidator<*, *, S>>,
     private val handlers: MutableMap<KClass<out CommandInvocationException>, ExceptionHandler<*, *>>,
+    private val defaultSuggestions: MutableMap<KClass<*>, SuggestionProvider<S>>,
     private val suggestions: MutableMap<KClass<out SuggestionProvider<S>>, SuggestionProvider<S>>,
     private val commandsByAliases: MutableMap<String, CommandData<C>>
 ) {
@@ -42,7 +45,10 @@ internal class CommandInvoker<S : Any, C : Any>(
             val subcommandsData = findSubcommands(args, rawArgs, commandData)
             val (subcommandData, params) = findSubcommand(sender, args, subcommandsData)
 
-            processorRegistry.permissionHandler?.checkPermission(commandData.instance, sender)
+            processorRegistry.permissionHandler?.let {
+                it.checkPermission(sender, commandData)
+                it.checkPermission(sender, subcommandData)
+            }
 
             if (!checkBeforeCommands(sender, commandData)) {
                 throw BeforeCommandFailException(rawArgs, commandData, subcommandData)
@@ -65,47 +71,74 @@ internal class CommandInvoker<S : Any, C : Any>(
     }
 
     fun generateSuggestions(sender: S, input: String): List<String> {
-        try {
-            val args = parseInput(input)
-            val commandData = try {
-                findCommand(args, args)
-            } catch (_: CommandNotFoundException) {
-                return registeredCommands.flatMap(CommandData<C>::aliases).filter {
-                    it.startsWith(args[0], true)
-                }
+        val args = parseInput(input)
+        val suggestions = mutableListOf<String>()
+        val commandData = try {
+            findCommand(args, args)
+        } catch (_: CommandNotFoundException) {
+            registeredCommands.forEach {
+                suggestions += filterSuggestions(sender, args[0], it.aliases, listOf(it))
             }
-            val subcommandsData = findAllSubcommands(args, commandData)
-
-            val suggestions = mutableListOf<String>()
-            subcommandsData.forEach { subcommandData ->
-                val paramIndex = args.size - 1 + input.endsWith(' ').toInt()
-                if (paramIndex !in 0 until subcommandData.parameters.size) {
-                    return@forEach
-                }
-                val param = subcommandData.parameters[paramIndex]
-                val annotation = param.annotations.find { it is Suggest } ?: return@forEach
-                val id = (annotation as Suggest).providerClass
-                val generatedSuggestions = this.suggestions[id]?.suggest(sender, param) ?: return@forEach
-                suggestions += if (args.isNotEmpty() && !input.endsWith(' '))
-                    generatedSuggestions.filter {
-                        val arg = args[paramIndex]
-                        it.startsWith(arg, true) && it != arg
-                    } else generatedSuggestions
-            }
-            if (args.size <= 1 && subcommandsData.isEmpty()) {
-                val notArgsSuggestions = mutableListOf<String>()
-                notArgsSuggestions += commandData.subcommands.keys.flatten()
-                notArgsSuggestions += commandData.children.flatMap(CommandData<C>::aliases)
-                if (args.size == 1) {
-                    suggestions += notArgsSuggestions.filter { it.startsWith(args[0], true) }
-                } else if (input.endsWith(' ')) {
-                    suggestions += notArgsSuggestions
-                }
-            }
-            return suggestions.distinct()
-        } catch (ex: Exception) {
+            return suggestions
+        }
+        if (!hasPermission(sender, commandData)) {
             return emptyList()
         }
+        val subcommandsData = findAllSubcommands(args, commandData)
+
+        subcommandsData.forEach { subcommandData ->
+            if (!hasPermission(sender, subcommandData)) {
+                return@forEach
+            }
+            val paramIndex = args.size - 1 + input.endsWith(' ').toInt()
+            if (paramIndex !in 0 until subcommandData.parameters.size) {
+                return@forEach
+            }
+            val param = subcommandData.parameters[paramIndex]
+            val provider = this.suggestions[param.findAnnotation<Suggest>()?.providerClass]
+                ?: defaultSuggestions[param.type.kotlin]
+                ?: return@forEach
+            val arg = args.getOrNull(paramIndex) ?: ""
+            val generatedSuggestions = provider.suggest(sender, arg, param)
+            suggestions += if (args.isNotEmpty() && !input.endsWith(' '))
+                generatedSuggestions.filter {
+                    it.startsWith(arg, true) && it != arg
+                } else generatedSuggestions
+        }
+        if (args.size == 1 || input.endsWith(' ') && subcommandsData.isEmpty()) {
+            val start = if (args.size == 1) args[0] else ""
+
+            commandData.subcommands.forEach { (aliases, subcommandsData) ->
+                suggestions += filterSuggestions(sender, start, aliases, subcommandsData)
+            }
+            commandData.children.forEach { childData ->
+                suggestions += filterSuggestions(sender, start, childData.aliases, listOf(childData))
+            }
+        }
+        return suggestions.distinct()
+    }
+
+    private fun filterSuggestions(
+        sender: S,
+        start: String,
+        aliases: List<String>,
+        commandsData: List<AbstractCommandData>
+    ) : List<String> {
+        val filteredAliases = aliases.filter { it.startsWith(start, true) }
+        if (filteredAliases.isNotEmpty() && commandsData.any { hasPermission(sender, it) }) {
+            return filteredAliases
+        }
+        return emptyList()
+    }
+
+    private fun hasPermission(
+        sender: S,
+        commandData: AbstractCommandData
+    ) = try {
+        processorRegistry.permissionHandler?.checkPermission(sender, commandData)
+        true
+    } catch (_: NotEnoughPermissionException) {
+        false
     }
 
     private fun parseInput(input: String): MutableList<String> {

@@ -1,6 +1,10 @@
 package ru.meldren.abc.processor
 
-fun interface PermissionHandler<S : Any, C : Any> {
+import ru.meldren.abc.common.AbstractCommandData
+import ru.meldren.abc.common.CommandData
+import ru.meldren.abc.common.SubcommandData
 
-    fun checkPermission(command: C, sender: S)
+fun interface PermissionHandler<S : Any> {
+
+    fun checkPermission(sender: S, commandData: AbstractCommandData)
 }

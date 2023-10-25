@@ -1,8 +1,8 @@
 package ru.meldren.abc.common
 
-import kotlin.reflect.KClass
+import ru.meldren.abc.annotation.Description
 
-data class CommandParameter internal constructor(
-    val type: KClass<*>,
-    val annotations: List<Annotation>
-)
+class CommandParameter internal constructor(
+    val type: Class<*>,
+    override val annotations: List<Annotation>
+) : IAnnotatable

@@ -44,7 +44,6 @@ internal class CommandRegistry<C : Any>(
         val commandClass = command::class
         checkClassFitsRequirements(commandClass)
         val aliases = getAliases(commandClass)
-        val description = getDescription(commandClass)
         val cooldown = commandClass.findAnnotation<Cooldown>()?.let {
             it.unit.toSeconds(it.value.toLong())
         } ?: 0
@@ -56,9 +55,9 @@ internal class CommandRegistry<C : Any>(
         val children = getChildren(command)
         val beforeCommands = getBeforeCommands(commandClass)
         return CommandData(
-            aliases, description, cooldown,
-            command, defaultSubcommands, subcommands,
-            children, beforeCommands
+            aliases, cooldown, command,
+            commandClass.annotations, defaultSubcommands,
+            subcommands, children, beforeCommands
         )
     }
 
@@ -128,13 +127,9 @@ internal class CommandRegistry<C : Any>(
 
     private fun constructSubcommand(function: KFunction<*>): SubcommandData {
         val params = function.valueParameters.filterNot { it.hasAnnotation<Sender>() }.map {
-            CommandParameter(it.type.classifier!! as KClass<*>, it.annotations)
+            CommandParameter((it.type.classifier!! as KClass<*>).java, it.annotations)
         }
-        return SubcommandData(
-            getDescription(function),
-            getSyntax(function),
-            params, function
-        )
+        return SubcommandData(params, function.annotations, function)
     }
 
     private fun getChildren(command: C): List<CommandData<C>> {
@@ -189,8 +184,4 @@ internal class CommandRegistry<C : Any>(
 
         return functions
     }
-
-    private fun getDescription(element: KAnnotatedElement) = element.findAnnotation<Description>()?.description
-
-    private fun getSyntax(element: KAnnotatedElement) = element.findAnnotation<Syntax>()?.syntax
 }

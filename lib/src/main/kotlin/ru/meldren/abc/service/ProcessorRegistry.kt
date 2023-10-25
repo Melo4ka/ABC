@@ -16,28 +16,21 @@ internal class ProcessorRegistry<S : Any, C : Any>(
     private val parsers: MutableMap<KClass<out ArgumentParser<*>>, ArgumentParser<*>>,
     private val validators: MutableMap<KClass<out Annotation>, ArgumentValidator<*, *, S>>,
     private val handlers: MutableMap<KClass<out CommandInvocationException>, ExceptionHandler<*, *>>,
+    private val defaultSuggestions: MutableMap<KClass<*>, SuggestionProvider<S>>,
     private val suggestions: MutableMap<KClass<out SuggestionProvider<S>>, SuggestionProvider<S>>
 ) {
 
-    var permissionHandler: PermissionHandler<S, C>? = null
+    var permissionHandler: PermissionHandler<S>? = null
         private set
     var cooldownHandler: CooldownHandler<S, C>? = null
         private set
 
-    fun registerPermissionHandler(handler: PermissionHandler<S, C>) {
+    fun registerPermissionHandler(handler: PermissionHandler<S>) {
         checkNullOrThrow(permissionHandler) {
             CommandRegistrationException("Permission handler is already registered.")
         }
 
         permissionHandler = handler
-    }
-
-    fun unregisterPermissionHandler() {
-        checkNotNullOrThrow(permissionHandler) {
-            CommandRegistrationException("Permission handler is not registered.")
-        }
-
-        permissionHandler = null
     }
 
     fun registerCooldownHandler(handler: CooldownHandler<S, C>) {
@@ -46,14 +39,6 @@ internal class ProcessorRegistry<S : Any, C : Any>(
         }
 
         cooldownHandler = handler
-    }
-
-    fun unregisterCooldownHandler() {
-        checkNotNullOrThrow(cooldownHandler) {
-            CommandRegistrationException("Cooldown handler is not registered.")
-        }
-
-        cooldownHandler = null
     }
 
     fun registerDefaultParser(
@@ -68,15 +53,6 @@ internal class ProcessorRegistry<S : Any, C : Any>(
         parsers[parser::class] = parser
     }
 
-    fun unregisterDefaultParser(type: KClass<*>) {
-        checkOrThrow(type in defaultParsers) {
-            CommandRegistrationException("Default ${type.simpleName} parser is not registered.")
-        }
-
-        val parser = defaultParsers.remove(type)!!
-        parsers.remove(parser::class)
-    }
-
     fun registerParser(parser: ArgumentParser<*>) {
         val parserClass = parser::class
 
@@ -85,19 +61,6 @@ internal class ProcessorRegistry<S : Any, C : Any>(
         }
 
         parsers[parserClass] = parser
-    }
-
-    fun unregisterParser(parserClass: KClass<out ArgumentParser<*>>) {
-        checkOrThrow(parserClass in parsers) {
-            CommandRegistrationException("Parser ${parserClass.simpleName} is not registered.")
-        }
-
-        val parser = parsers[parserClass]
-        checkOrThrow(!defaultParsers.containsValue(parser)) {
-            CommandRegistrationException("Default parsers must be unregistered via ${::unregisterDefaultParser.name}.")
-        }
-
-        parsers.remove(parserClass)
     }
 
     fun registerValidator(
@@ -112,40 +75,25 @@ internal class ProcessorRegistry<S : Any, C : Any>(
         validators[annotationClass as KClass<Annotation>] = validator
     }
 
-    fun unregisterValidator(annotationClass: KClass<out Annotation>) {
-        checkOrThrow(annotationClass in validators) {
-            CommandRegistrationException("${annotationClass.simpleName} validator is not registered.")
-        }
-
-        validators.remove(annotationClass)
-    }
-
-    @Suppress("UNCHECKED_CAST")
     fun <T : CommandInvocationException, I : Any> registerExceptionHandler(
         handler: ExceptionHandler<T, I>,
         type: KClass<*> = handler::class.supertypeTypeParameters<ExceptionHandler<*, *>>()[0]
     ) {
-        val subclasses = mutableListOf(type)
-        while (subclasses.isNotEmpty()) {
-            val subclass = subclasses.removeLast()
-            subclasses += subclass.sealedSubclasses
-            if (subclass in handlers) {
-                continue
+        checkOrThrow(type !in handlers) {
+            CommandRegistrationException("Exception handler for ${type.simpleName} is already registered.")
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        handlers[type as KClass<out CommandInvocationException>] = handler
+    }
+
+    fun registerSuggestionProvider(vararg types: Class<*>, provider: SuggestionProvider<S>) {
+        types.forEach {
+            checkOrThrow(it.kotlin !in defaultSuggestions) {
+                CommandRegistrationException("Default suggestion provider for ${it.simpleName} is already registered.")
             }
-            handlers[subclass as KClass<out CommandInvocationException>] = handler
-        }
-    }
-
-    fun unregisterExceptionHandler(type: KClass<out CommandException>) {
-        checkOrThrow(type in handlers) {
-            CommandRegistrationException("Exception handler for ${type.simpleName} is not registered.")
         }
 
-        val handler = handlers[type]
-        handlers.entries.removeIf { (key, value) -> key.isSubclassOf(type) && handler == value }
-    }
-
-    fun registerSuggestionProvider(provider: SuggestionProvider<S>) {
         val providerClass = provider::class
 
         checkOrThrow(providerClass !in suggestions) {
@@ -153,13 +101,6 @@ internal class ProcessorRegistry<S : Any, C : Any>(
         }
 
         suggestions[providerClass] = provider
-    }
-
-    fun unregisterSuggestionProvider(providerClass: KClass<out SuggestionProvider<S>>) {
-        checkOrThrow(providerClass in suggestions) {
-            CommandRegistrationException("Suggestion provider ${providerClass.simpleName} is not registered.")
-        }
-
-        suggestions.remove(providerClass)
+        defaultSuggestions += types.associate { it.kotlin to provider }
     }
 }

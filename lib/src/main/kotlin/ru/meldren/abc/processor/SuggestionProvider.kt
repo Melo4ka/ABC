@@ -4,5 +4,5 @@ import ru.meldren.abc.common.CommandParameter
 
 fun interface SuggestionProvider<S : Any> {
 
-    fun suggest(sender: S, parameter: CommandParameter): List<String>
+    fun suggest(sender: S, input: String, parameter: CommandParameter): List<String>
 }

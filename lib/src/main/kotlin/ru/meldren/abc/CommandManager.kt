@@ -14,6 +14,7 @@ open class CommandManager<S : Any, C : Any>(val commandPrefix: String = "/") {
     private val _parsers = mutableMapOf<KClass<out ArgumentParser<*>>, ArgumentParser<*>>()
     private val _validators = mutableMapOf<KClass<out Annotation>, ArgumentValidator<*, *, S>>()
     private val _handlers = mutableMapOf<KClass<out CommandInvocationException>, ExceptionHandler<*, *>>()
+    private val _defaultSuggestions = mutableMapOf<KClass<*>, SuggestionProvider<S>>()
     private val _suggestions = mutableMapOf<KClass<out SuggestionProvider<S>>, SuggestionProvider<S>>()
     private val commandsByAliases = mutableMapOf<String, CommandData<C>>()
 
@@ -21,12 +22,16 @@ open class CommandManager<S : Any, C : Any>(val commandPrefix: String = "/") {
     internal val commandRegistry = CommandRegistry(_registeredCommands, commandsByAliases)
 
     @PublishedApi
-    internal val processorRegistry = ProcessorRegistry<S, C>(_defaultParsers, _parsers, _validators, _handlers, _suggestions)
+    internal val processorRegistry = ProcessorRegistry<S, C>(
+        _defaultParsers, _parsers, _validators,
+        _handlers, _defaultSuggestions, _suggestions
+    )
 
     @PublishedApi
     internal val commandInvoker = CommandInvoker(
-        commandPrefix, processorRegistry, _registeredCommands, _defaultParsers,
-        _parsers, _validators, _handlers, _suggestions, commandsByAliases
+        commandPrefix, processorRegistry, _registeredCommands,
+        _defaultParsers, _parsers, _validators, _handlers,
+        _defaultSuggestions, _suggestions, commandsByAliases
     )
 
     val registeredCommands
@@ -39,6 +44,8 @@ open class CommandManager<S : Any, C : Any>(val commandPrefix: String = "/") {
         get() = _validators.toMap()
     val handlers
         get() = _handlers.toMap()
+    val defaultSuggestions
+        get() = _defaultSuggestions.toMap()
     val suggestions
         get() = _suggestions.toMap()
     val permissionHandler
@@ -48,16 +55,12 @@ open class CommandManager<S : Any, C : Any>(val commandPrefix: String = "/") {
 
     /* Permission handler */
 
-    inline fun registerPermissionHandler(handler: PermissionHandler<S, C>) =
+    inline fun registerPermissionHandler(handler: PermissionHandler<S>) =
         processorRegistry.registerPermissionHandler(handler)
-
-    inline fun unregisterPermissionHandler() = processorRegistry.unregisterPermissionHandler()
 
     /* Cooldown handler */
 
     inline fun registerCooldownHandler(handler: CooldownHandler<S, C>) = processorRegistry.registerCooldownHandler(handler)
-
-    inline fun unregisterCooldownHandler() = processorRegistry.unregisterCooldownHandler()
 
     /* Commands registry */
 
@@ -66,6 +69,8 @@ open class CommandManager<S : Any, C : Any>(val commandPrefix: String = "/") {
     inline fun <reified T : C> unregisterCommand() = commandRegistry.unregisterCommand(T::class)
 
     inline fun <T> invokeCommand(sender: S, input: String) = commandInvoker.invokeCommand<T>(sender, input)
+
+    inline fun invokeCommand(sender: S, input: String) = commandInvoker.invokeCommand<Unit>(sender, input)
 
     inline fun generateSuggestions(sender: S, input: String): List<String> =
         commandInvoker.generateSuggestions(sender, input)
@@ -81,11 +86,7 @@ open class CommandManager<S : Any, C : Any>(val commandPrefix: String = "/") {
         }, T::class)
     }
 
-    inline fun <reified T> unregisterDefaultParser() = processorRegistry.unregisterDefaultParser(T::class)
-
     inline fun registerParser(parser: ArgumentParser<*>) = processorRegistry.registerParser(parser)
-
-    inline fun <reified T : ArgumentParser<*>> unregisterParser() = processorRegistry.unregisterParser(T::class)
 
     /* Validators registry */
 
@@ -96,8 +97,6 @@ open class CommandManager<S : Any, C : Any>(val commandPrefix: String = "/") {
             override fun validate(sender: S, arg: T, annotation: A) = validator(arg, annotation, sender)
         }, A::class)
     }
-
-    inline fun <reified T : Annotation> unregisterValidator() = processorRegistry.unregisterValidator(T::class)
 
     /* Exception handlers */
 
@@ -110,14 +109,8 @@ open class CommandManager<S : Any, C : Any>(val commandPrefix: String = "/") {
         }, T::class)
     }
 
-    inline fun <reified T : CommandInvocationException> unregisterExceptionHandler() =
-        processorRegistry.unregisterExceptionHandler(T::class)
-
     /* Suggestions providers */
 
-    inline fun registerSuggestionProvider(provider: SuggestionProvider<S>) =
-        processorRegistry.registerSuggestionProvider(provider)
-
-    inline fun <reified T : SuggestionProvider<S>> unregisterSuggestionProvider() =
-        processorRegistry.unregisterSuggestionProvider(T::class)
+    inline fun registerSuggestionProvider(vararg types: Class<*>, provider: SuggestionProvider<S>) =
+        processorRegistry.registerSuggestionProvider(types = types, provider)
 }

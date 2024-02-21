@@ -66,7 +66,7 @@ open class CommandManager<S : Any, C : Any>(val commandPrefix: String = "/") {
 
     inline fun registerCommand(command: C) = commandRegistry.registerCommand(command)
 
-    inline fun <T : C> unregisterCommand(commandClass: KClass<T>) = commandRegistry.unregisterCommand(commandClass)
+    inline fun <T : C> unregisterCommand(commandClass: Class<T>) = commandRegistry.unregisterCommand(commandClass)
 
     inline fun <T> invokeCommand(sender: S, input: String) = commandInvoker.invokeCommand<T>(sender, input)
 

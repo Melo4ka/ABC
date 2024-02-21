@@ -27,8 +27,8 @@ internal class CommandRegistry<C : Any>(
         }
     }
 
-    fun <T : C> unregisterCommand(commandClass: KClass<T>) {
-        val command = registeredCommands.find { commandClass == it.instance::class }
+    fun <T : C> unregisterCommand(commandClass: Class<T>) {
+        val command = registeredCommands.find { commandClass.kotlin == it.instance::class }
 
         checkNotNullOrThrow(command) {
             CommandRegistrationException("${commandClass.simpleName} is not registered.")

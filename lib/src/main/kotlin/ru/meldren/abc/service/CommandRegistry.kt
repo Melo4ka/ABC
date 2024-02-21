@@ -27,6 +27,19 @@ internal class CommandRegistry<C : Any>(
         }
     }
 
+    fun <T : C> unregisterCommand(commandClass: KClass<T>) {
+        val command = registeredCommands.find { commandClass == it.instance::class }
+
+        checkNotNullOrThrow(command) {
+            CommandRegistrationException("${commandClass.simpleName} is not registered.")
+        }
+
+        registeredCommands.remove(command)
+        command.aliases.forEach { alias ->
+            commandsByAliases.remove(alias.lowercase())
+        }
+    }
+
     private fun constructCommand(command: C): CommandData<C> {
         val commandClass = command::class
         checkClassFitsRequirements(commandClass)

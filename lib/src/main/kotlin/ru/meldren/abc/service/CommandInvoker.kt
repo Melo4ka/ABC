@@ -105,7 +105,7 @@ internal class CommandInvoker<S : Any, C : Any>(
                     it.startsWith(arg, true) && it != arg
                 } else generatedSuggestions
         }
-        if (args.size == 1 || input.endsWith(' ') && subcommandsData.isEmpty()) {
+        if ((args.size == 1 || input.endsWith(' ')) && subcommandsData.isEmpty()) {
             val start = if (args.size == 1) args[0] else ""
 
             commandData.subcommands.forEach { (aliases, subcommandsData) ->
